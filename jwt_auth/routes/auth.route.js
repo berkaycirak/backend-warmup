@@ -2,7 +2,11 @@ import express from 'express';
 import createHttpError from 'http-errors';
 import { User } from '../models/user.model.js';
 import { userValidationSchema } from '../lib/validation.js';
-import { signAccessToken } from '../lib/jwt.js';
+import {
+	signAccessToken,
+	signRefreshToken,
+	verifyRefreshToken,
+} from '../lib/jwt.js';
 
 /*
 The routes will be like that;
@@ -32,8 +36,9 @@ router.post('/register', async (req, res, next) => {
 		} else {
 			const newUser = await new User(result).save();
 			const accessToken = signAccessToken(newUser.id);
+			const refreshToken = signRefreshToken(newUser.id);
 
-			res.send({ accessToken });
+			res.send({ accessToken, refreshToken });
 		}
 	} catch (error) {
 		if (error.isJoi === true) error.status = 422;
@@ -57,7 +62,8 @@ router.post('/login', async (req, res, next) => {
 			); //Instead of writing password only, add username here also for more secure.
 
 		const accessToken = signAccessToken(user.id);
-		res.send({ accessToken });
+		const refreshToken = signRefreshToken(user.id);
+		res.send({ accessToken, refreshToken });
 	} catch (error) {
 		if (error.isJoe === true)
 			return next(
@@ -66,8 +72,24 @@ router.post('/login', async (req, res, next) => {
 		next(error);
 	}
 });
+
+// When user's access token is expired, user can use that endpoint to obtain new access token by using refresh-token that is provided while registering or logging.
 router.post('/refresh-token', async (req, res, next) => {
-	res.send('Refresh Toke Route');
+	try {
+		const { refreshToken } = req.body;
+		if (!refreshToken) throw createHttpError.BadRequest();
+		const userId = await verifyRefreshToken(refreshToken);
+		const newAccessToken = signAccessToken(userId);
+		const newRefreshToken = signRefreshToken(userId);
+
+		res.send({
+			refreshToken: newRefreshToken,
+			accessToken: newAccessToken,
+		});
+	} catch (error) {
+		console.log(error);
+		next(error);
+	}
 });
 router.delete('/logout', async (req, res, next) => {
 	res.send('Logout Route');

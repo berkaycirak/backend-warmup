@@ -4,17 +4,22 @@ import 'dotenv/config';
 import { router as authRouter } from './routes/auth.route.js';
 import morgan from 'morgan';
 import connectDB from './lib/db.js';
+import { verifyAccessToken } from './lib/jwt.js';
+import { redisClient } from './lib/redis.js';
 
 const app = express();
 
 const PORT = process.env.PORT || 3000; // Where our server will live
 
-app.get('/', async (req, res, next) => {
+app.get('/', verifyAccessToken, async (req, res, next) => {
 	res.send('Welcome to my server');
 });
 // 1st middleware
 app.use(morgan('dev'));
 app.use(express.json());
+await redisClient.set('foo', 'bar');
+const value = await redisClient.get('foo');
+console.log(value);
 
 // 2nd middleware
 app.use('/auth', authRouter);
@@ -25,7 +30,7 @@ app.use(async (req, res, next) => {
 	// const error = new Error('Not Found');
 	// error.status = 404;
 	// next(error);
-
+	console.log('hey,hey');
 	next(
 		createHttpError.NotFound(
 			"Wassapp Dude, There is an error :'( since there is no route like that"
@@ -46,5 +51,6 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, async () => {
 	await connectDB(); // Connect to database
+
 	console.log(`Server running on port ${PORT}`);
 });
