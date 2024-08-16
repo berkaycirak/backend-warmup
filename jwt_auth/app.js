@@ -14,6 +14,7 @@ app.get('/', async (req, res, next) => {
 });
 // 1st middleware
 app.use(morgan('dev'));
+app.use(express.json());
 
 // 2nd middleware
 app.use('/auth', authRouter);
@@ -44,7 +45,6 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, async () => {
-	// Connect to database
-	await connectDB();
+	await connectDB(); // Connect to database
 	console.log(`Server running on port ${PORT}`);
 });
