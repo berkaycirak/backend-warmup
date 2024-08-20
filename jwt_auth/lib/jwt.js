@@ -1,5 +1,6 @@
 import createHttpError from 'http-errors';
 import jwt from 'jsonwebtoken';
+import { redisClient } from './redis.js';
 
 export function signAccessToken(userId) {
 	const payload = {};
@@ -11,7 +12,6 @@ export function signAccessToken(userId) {
 
 	try {
 		const access_token = jwt.sign(payload, secret, options);
-
 		return access_token;
 	} catch (error) {
 		console.log(error);
@@ -47,7 +47,7 @@ export function verifyAccessToken(req, res, next) {
 	);
 }
 
-export function signRefreshToken(userId) {
+export async function signRefreshToken(userId) {
 	const payload = {};
 	const secret = process.env.REFRESH_TOKEN_SECRET;
 	const options = {
@@ -56,25 +56,49 @@ export function signRefreshToken(userId) {
 	};
 
 	try {
-		const refresh_token = jwt.sign(payload, secret, options);
+		// Directly await the Promise from jwt.sign
+		const token = await new Promise((resolve, reject) => {
+			jwt.sign(payload, secret, options, (err, token) => {
+				if (err) {
+					console.log(err.message);
+					reject(createHttpError.InternalServerError());
+				}
+				resolve(token);
+			});
+		});
 
-		return refresh_token;
+		// Directly await Redis client method that returns a Promise
+		await redisClient.set(userId, token, { EX: 365 * 24 * 60 * 60 });
+
+		// Return the token
+		return token;
 	} catch (error) {
-		console.log(error);
+		console.log(error.message);
 		throw createHttpError.InternalServerError();
 	}
 }
 
-export function verifyRefreshToken(refreshToken) {
-	return new Promise((resolve, reject) => {
+export async function verifyRefreshToken(refreshToken) {
+	const userId = await new Promise((resolve, reject) => {
 		jwt.verify(
 			refreshToken,
 			process.env.REFRESH_TOKEN_SECRET,
-			(err, decoded) => {
-				if (err) reject(createHttpError.Unauthorized());
+			async (err, decoded) => {
+				if (err) {
+					console.log(err.message);
+					reject(createHttpError.InternalServerError());
+				}
 				const userId = decoded.aud;
-				resolve(userId);
+				const token = await redisClient.get(userId);
+
+				if (token === refreshToken) {
+					resolve(userId);
+				} else {
+					reject(createHttpError.Unauthorized());
+				}
 			}
 		);
 	});
+
+	return userId;
 }

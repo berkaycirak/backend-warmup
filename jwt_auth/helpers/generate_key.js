@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 
-const ACCESS_TOKEN_KEY = crypto.randomBytes(32).toString('hex');
+const ACCESS_TOKEN_SECRET = crypto.randomBytes(32).toString('hex');
 
-const REFRESH_TOKEN_KEY = crypto.randomBytes(32).toString('hex');
+const REFRESH_TOKEN_SECRET = crypto.randomBytes(32).toString('hex');
 
-console.table({ ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY });
+console.table({ ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET });

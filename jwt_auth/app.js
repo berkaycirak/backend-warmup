@@ -5,7 +5,6 @@ import { router as authRouter } from './routes/auth.route.js';
 import morgan from 'morgan';
 import connectDB from './lib/db.js';
 import { verifyAccessToken } from './lib/jwt.js';
-import { redisClient } from './lib/redis.js';
 
 const app = express();
 
@@ -15,11 +14,8 @@ app.get('/', verifyAccessToken, async (req, res, next) => {
 	res.send('Welcome to my server');
 });
 // 1st middleware
-app.use(morgan('dev'));
-app.use(express.json());
-await redisClient.set('foo', 'bar');
-const value = await redisClient.get('foo');
-console.log(value);
+app.use(morgan('dev')); // This helps to console.log in server
+app.use(express.json()); // For parsing requests from the client
 
 // 2nd middleware
 app.use('/auth', authRouter);
